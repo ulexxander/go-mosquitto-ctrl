@@ -1,23 +1,37 @@
 package mosquittoctrl
 
 import (
+	"bytes"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
 
+type Logger interface {
+	Cmd(cmd string, stdin, stdout, stderr *bytes.Buffer)
+}
+
+type LoggerStd struct {
+	Logger *log.Logger
+}
+
+func (ls *LoggerStd) Cmd(cmd string, stdin, stdout, stderr *bytes.Buffer) {
+	if ls.Logger == nil {
+		ls.Logger = log.New(os.Stderr, "mosquitto_ctrl:", log.LstdFlags)
+	}
+	ls.Logger.Printf("executed command: %s", cmd)
+	ls.Logger.Printf("stdout: %s", stdout)
+	ls.Logger.Printf("stderr: %s", stderr)
+}
+
 type Dynsec struct {
 	client        *ssh.Client
 	adminUsername string
 	adminPassword string
-	SessionFunc   SessionFunc
-}
-
-type SessionFunc func(client *ssh.Client) (*ssh.Session, error)
-
-func DefaultSessionFunc(client *ssh.Client) (*ssh.Session, error) {
-	return client.NewSession()
+	Logger        Logger
 }
 
 func NewDynsec(client *ssh.Client, adminUsername, adminPassword string) *Dynsec {
@@ -25,7 +39,6 @@ func NewDynsec(client *ssh.Client, adminUsername, adminPassword string) *Dynsec 
 		client:        client,
 		adminUsername: adminUsername,
 		adminPassword: adminPassword,
-		SessionFunc:   DefaultSessionFunc,
 	}
 }
 
@@ -98,13 +111,52 @@ func (d *Dynsec) AddClientRole(client string, role string) error {
 	)
 }
 
-func (d *Dynsec) run(cmd string, stdin ...string) error {
-	session, err := d.SessionFunc(d.client)
+func (d *Dynsec) run(cmd string, stdinLines ...string) error {
+	session, err := d.client.NewSession()
 	if err != nil {
 		return err
 	}
-	stdin = append(stdin, d.adminPassword)
-	session.Stdin = strings.NewReader(strings.Join(stdin, "\n"))
 	defer session.Close()
-	return session.Run(cmd)
+
+	stdinLines = append(stdinLines, d.adminPassword)
+	stdin := bytes.NewBufferString(strings.Join(stdinLines, "\n"))
+	session.Stdin = stdin
+	var stdout bytes.Buffer
+	session.Stdout = &stdout
+	var stderr bytes.Buffer
+	session.Stderr = &stderr
+
+	if err := session.Run(cmd); err != nil {
+		return err
+	}
+	if d.Logger != nil {
+		d.Logger.Cmd(cmd, stdin, &stdout, &stderr)
+	}
+	return seekOutputErrors(stderr.String())
+}
+
+// ConnectionError represents MQTT errors printed to stderr
+// See https://github.com/eclipse/mosquitto/blob/master/lib/strings_mosq.c for possible error messages
+// Example:
+// Connection error: Not authorized
+type ConnectionError struct {
+	Reason string
+}
+
+func (ce *ConnectionError) Error() string {
+	return "Connection error: " + ce.Reason
+}
+
+func seekOutputErrors(out string) error {
+	prefix := "Connection error: "
+	crIdx := strings.Index(out, prefix)
+	if crIdx == -1 {
+		return nil
+	}
+	out = out[crIdx+len(prefix):]
+	newlineIdx := strings.Index(out, "\n")
+	if newlineIdx != -1 {
+		out = out[:newlineIdx]
+	}
+	return &ConnectionError{Reason: out}
 }

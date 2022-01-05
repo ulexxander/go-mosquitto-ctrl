@@ -1,7 +1,6 @@
 package mosquittoctrl_test
 
 import (
-	"os"
 	"testing"
 
 	mosquittoctrl "github.com/ulexxander/go-mosquitto-ctrl"
@@ -21,27 +20,17 @@ var sshConfig = &ssh.ClientConfig{
 }
 
 func TestDynsec(t *testing.T) {
-	sshClient, err := ssh.Dial("tcp", sshServer, sshConfig)
-	if err != nil {
-		t.Fatalf("error dialing ssh: %s", err)
-	}
-	defer sshClient.Close()
-
 	adminUsername := "admin"
 	adminPassword := "admin"
 	clientUsername := "time_publisher"
 	clientPassword := "123"
 	roleName := "time"
+	ds := setupDynsec(t, adminUsername, adminPassword)
+	ds.Logger = &mosquittoctrl.LoggerStd{}
 
-	ds := mosquittoctrl.NewDynsec(sshClient, adminUsername, adminPassword)
-	ds.SessionFunc = func(client *ssh.Client) (*ssh.Session, error) {
-		session, err := client.NewSession()
-		if err != nil {
-			return nil, err
-		}
-		session.Stdout = os.Stdout
-		session.Stderr = os.Stderr
-		return session, nil
+	err := ds.Init(mosquittoctrl.DefaultConfigFile)
+	if err != nil {
+		t.Fatalf("error initializing: %s", err)
 	}
 
 	err = ds.DeleteClient(clientUsername)
@@ -73,4 +62,31 @@ func TestDynsec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error adding client role: %s", err)
 	}
+}
+
+func TestDynsecConnectionError(t *testing.T) {
+	adminUsername := "guythatdoesnotexit"
+	adminPassword := "123"
+	ds := setupDynsec(t, adminUsername, adminPassword)
+
+	err := ds.CreateClient("someclient", "clientpass")
+	connErr, ok := err.(*mosquittoctrl.ConnectionError)
+	if !ok {
+		t.Fatalf("expected connection error, got: %T", err)
+	}
+	reason := "Not authorized"
+	if connErr.Reason != reason {
+		t.Fatalf("expected reason %s, got: %s", reason, connErr.Reason)
+	}
+}
+
+func setupDynsec(t *testing.T, adminUsername, adminPassword string) *mosquittoctrl.Dynsec {
+	sshClient, err := ssh.Dial("tcp", sshServer, sshConfig)
+	if err != nil {
+		t.Fatalf("error dialing ssh: %s", err)
+	}
+	t.Cleanup(func() {
+		sshClient.Close()
+	})
+	return mosquittoctrl.NewDynsec(sshClient, adminUsername, adminPassword)
 }
