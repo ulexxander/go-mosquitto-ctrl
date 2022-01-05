@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   mosquitto:
-    image: ulexxander/eclipse-mosquitto-ssh:v1.0.0
+    image: ulexxander/eclipse-mosquitto-ssh:v1.1.0
     ports:
       - "1883:1883"
       - "1882:22"
