@@ -28,7 +28,7 @@ func TestDynsec(t *testing.T) {
 	ds := setupDynsec(t, adminUsername, adminPassword)
 	ds.Logger = &mosquittoctrl.LoggerStd{}
 
-	err := ds.Init(mosquittoctrl.DefaultConfigFile)
+	err := ds.Init(mosquittoctrl.DefaultDynsecConfigFile)
 	if err != nil {
 		t.Fatalf("error initializing: %s", err)
 	}
