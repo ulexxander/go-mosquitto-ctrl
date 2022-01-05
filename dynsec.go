@@ -42,7 +42,7 @@ func NewDynsec(client *ssh.Client, adminUsername, adminPassword string) *Dynsec 
 	}
 }
 
-const DefaultConfigFile = "/mosquitto/config/dynamic-security.json"
+const DefaultClientConfigFile = "/mosquitto/config/dynamic-security.json"
 
 func (d *Dynsec) Init(configFile string) error {
 	return d.run(
