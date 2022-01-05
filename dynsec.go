@@ -20,7 +20,7 @@ type LoggerStd struct {
 
 func (ls *LoggerStd) Cmd(cmd string, stdin, stdout, stderr *bytes.Buffer) {
 	if ls.Logger == nil {
-		ls.Logger = log.New(os.Stderr, "mosquitto_ctrl:", log.LstdFlags)
+		ls.Logger = log.New(os.Stderr, "mosquitto_ctrl: ", log.LstdFlags)
 	}
 	ls.Logger.Printf("executed command: %s", cmd)
 	ls.Logger.Printf("stdout: %s", stdout)
@@ -126,11 +126,12 @@ func (d *Dynsec) run(cmd string, stdinLines ...string) error {
 	var stderr bytes.Buffer
 	session.Stderr = &stderr
 
-	if err := session.Run(cmd); err != nil {
-		return err
-	}
+	err = session.Run(cmd)
 	if d.Logger != nil {
 		d.Logger.Cmd(cmd, stdin, &stdout, &stderr)
+	}
+	if err != nil {
+		return err
 	}
 	return seekOutputErrors(stderr.String())
 }
