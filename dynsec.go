@@ -11,6 +11,13 @@ type Dynsec struct {
 	client        *ssh.Client
 	adminUsername string
 	adminPassword string
+	SessionFunc   SessionFunc
+}
+
+type SessionFunc func(client *ssh.Client) (*ssh.Session, error)
+
+func DefaultSessionFunc(client *ssh.Client) (*ssh.Session, error) {
+	return client.NewSession()
 }
 
 func NewDynsec(client *ssh.Client, adminUsername, adminPassword string) *Dynsec {
@@ -18,6 +25,7 @@ func NewDynsec(client *ssh.Client, adminUsername, adminPassword string) *Dynsec 
 		client:        client,
 		adminUsername: adminUsername,
 		adminPassword: adminPassword,
+		SessionFunc:   DefaultSessionFunc,
 	}
 }
 
@@ -91,7 +99,7 @@ func (d *Dynsec) AddClientRole(client string, role string) error {
 }
 
 func (d *Dynsec) run(cmd string, stdin ...string) error {
-	session, err := d.client.NewSession()
+	session, err := d.SessionFunc(d.client)
 	if err != nil {
 		return err
 	}

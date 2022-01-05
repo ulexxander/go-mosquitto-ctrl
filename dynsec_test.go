@@ -1,6 +1,7 @@
 package mosquittoctrl_test
 
 import (
+	"os"
 	"testing"
 
 	mosquittoctrl "github.com/ulexxander/go-mosquitto-ctrl"
@@ -32,34 +33,43 @@ func TestDynsec(t *testing.T) {
 	clientPassword := "123"
 	roleName := "time"
 
-	mcd := mosquittoctrl.NewDynsec(sshClient, adminUsername, adminPassword)
+	ds := mosquittoctrl.NewDynsec(sshClient, adminUsername, adminPassword)
+	ds.SessionFunc = func(client *ssh.Client) (*ssh.Session, error) {
+		session, err := client.NewSession()
+		if err != nil {
+			return nil, err
+		}
+		session.Stdout = os.Stdout
+		session.Stderr = os.Stderr
+		return session, nil
+	}
 
-	err = mcd.DeleteClient(clientUsername)
+	err = ds.DeleteClient(clientUsername)
 	if err != nil {
 		t.Fatalf("error cleaning up client: %s", err)
 	}
-	err = mcd.DeleteRole(roleName)
+	err = ds.DeleteRole(roleName)
 	if err != nil {
 		t.Fatalf("error cleaning up role: %s", err)
 	}
 
-	err = mcd.CreateRole(roleName)
+	err = ds.CreateRole(roleName)
 	if err != nil {
 		t.Fatalf("error creating role: %s", err)
 	}
-	err = mcd.AddRoleACL(roleName, "publishClientSend", "time_current", "allow", 1)
+	err = ds.AddRoleACL(roleName, "publishClientSend", "time_current", "allow", 1)
 	if err != nil {
 		t.Fatalf("error allowing publishClientSend: %s", err)
 	}
-	err = mcd.AddRoleACL(roleName, "subscribeLiteral", "time_current", "allow", 1)
+	err = ds.AddRoleACL(roleName, "subscribeLiteral", "time_current", "allow", 1)
 	if err != nil {
 		t.Fatalf("error allowing subscribeLiteral: %s", err)
 	}
-	err = mcd.CreateClient(clientUsername, clientPassword)
+	err = ds.CreateClient(clientUsername, clientPassword)
 	if err != nil {
 		t.Fatalf("error creating client: %s", err)
 	}
-	err = mcd.AddClientRole(clientUsername, roleName)
+	err = ds.AddClientRole(clientUsername, roleName)
 	if err != nil {
 		t.Fatalf("error adding client role: %s", err)
 	}
