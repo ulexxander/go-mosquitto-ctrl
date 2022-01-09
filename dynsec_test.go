@@ -9,7 +9,7 @@ import (
 
 const sshServer = "localhost:1882"
 const sshUsername = "admin"
-const sshPassword = "admin"
+const sshPassword = "123"
 
 var sshConfig = &ssh.ClientConfig{
 	User: sshUsername,
@@ -21,19 +21,14 @@ var sshConfig = &ssh.ClientConfig{
 
 func TestDynsec(t *testing.T) {
 	adminUsername := "admin"
-	adminPassword := "admin"
+	adminPassword := "123"
 	clientUsername := "time_publisher"
 	clientPassword := "123"
 	roleName := "time"
 	ds := setupDynsec(t, adminUsername, adminPassword)
 	ds.Logger = &mosquittoctrl.LoggerStd{}
 
-	err := ds.Init(mosquittoctrl.DefaultDynsecConfigFile)
-	if err != nil {
-		t.Fatalf("error initializing: %s", err)
-	}
-
-	err = ds.DeleteClient(clientUsername)
+	err := ds.DeleteClient(clientUsername)
 	if err != nil {
 		t.Fatalf("error cleaning up client: %s", err)
 	}
@@ -66,7 +61,7 @@ func TestDynsec(t *testing.T) {
 
 func TestDynsecConnectionError(t *testing.T) {
 	adminUsername := "guythatdoesnotexit"
-	adminPassword := "123"
+	adminPassword := "98765"
 	ds := setupDynsec(t, adminUsername, adminPassword)
 
 	err := ds.CreateClient("someclient", "clientpass")
