@@ -44,17 +44,6 @@ func NewDynsec(client *ssh.Client, adminUsername, adminPassword string) *Dynsec 
 
 const DefaultDynsecConfigFile = "/mosquitto/config/dynamic-security.json"
 
-func (d *Dynsec) Init(configFile string) error {
-	return d.run(
-		fmt.Sprintf(
-			"mosquitto_ctrl dynsec init %s %s",
-			configFile, d.adminUsername,
-		),
-		d.adminPassword,
-		d.adminPassword,
-	)
-}
-
 func (d *Dynsec) CreateRole(name string) error {
 	return d.run(
 		fmt.Sprintf(
